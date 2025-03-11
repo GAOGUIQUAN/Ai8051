@@ -1,0 +1,435 @@
+C251 COMPILER V5.60.0,  gui                                                                11/03/25  16:06:05  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE gui
+OBJECT MODULE PLACED IN ..\obj\gui.obj
+COMPILER INVOKED BY: C:\Keil_v5\C251\BIN\C251.EXE ..\GUI\gui.c XSMALL INTR2 BROWSE INCDIR(..\GUI;..\LCD;..\sys;..\touch;
+                    -..\USER;..\TinyMaix;TinyMaix;..\font;.;..\TinyMaix) DEBUG PRINT(.\gui.lst) TABS(2) OBJECT(..\obj\gui.obj) 
+
+stmt  level    source
+
+    1          #include "lcd.h"
+    2          #include "font.h" 
+    3          #include "sys.h"
+    4          #include "gui.h"
+    5          #include "string.h"
+    6          
+    7          
+    8          void GUI_DrawPoint(u16 x,u16 y,u16 color)
+    9          {
+   10   1          LCD_SetCursor(x,y);//设置光标位置 
+   11   1          LCD_WR_DATA_16Bit(color); 
+   12   1      }
+   13          
+   14          void LCD_Fill(u16 sx,u16 sy,u16 ex,u16 ey,u16 color)
+   15          {      
+   16   1          u16 i,j;            
+   17   1          u16 width=ex-sx+1;         //得到填充的宽度
+   18   1          u16 height=ey-sy+1;        //高度
+   19   1          LCD_SetWindows(sx,sy,ex,ey);//设置显示窗口
+   20   1          for(i=0;i<height;i++)
+   21   1          {
+   22   2              for(j=0;j<width;j++)
+   23   2              LCD_WR_DATA_16Bit(color);    //写入数据      
+   24   2          }
+   25   1          LCD_SetWindows(0,0,lcddev.width-1,lcddev.height-1);//恢复窗口设置为全屏
+   26   1      }
+   27          
+   28          
+   29          void LCD_DrawLine(u16 x1, u16 y1, u16 x2, u16 y2)
+   30          {
+   31   1          u16 t; 
+   32   1          int xerr=0,yerr=0,delta_x,delta_y,distance; 
+   33   1          int incx,incy,uRow,uCol; 
+   34   1      
+   35   1          delta_x=x2-x1; //计算坐标增量 
+   36   1          delta_y=y2-y1; 
+   37   1          uRow=x1; 
+   38   1          uCol=y1; 
+   39   1          if(delta_x>0)incx=1; //设置单步方向 
+   40   1          else if(delta_x==0)incx=0;//垂直线 
+   41   1          else {incx=-1;delta_x=-delta_x;} 
+   42   1          if(delta_y>0)incy=1; 
+   43   1          else if(delta_y==0)incy=0;//水平线 
+   44   1          else{incy=-1;delta_y=-delta_y;} 
+   45   1          if( delta_x>delta_y)distance=delta_x; //选取基本增量坐标轴 
+   46   1          else distance=delta_y; 
+   47   1          for(t=0;t<=distance+1;t++ )//画线输出 
+   48   1          {  
+   49   2              LCD_DrawPoint(uRow,uCol);//画点 
+   50   2              xerr+=delta_x ; 
+   51   2              yerr+=delta_y ; 
+   52   2              if(xerr>distance) 
+   53   2              { 
+   54   3                  xerr-=distance; 
+   55   3                  uRow+=incx; 
+   56   3              } 
+   57   2              if(yerr>distance) 
+   58   2              { 
+C251 COMPILER V5.60.0,  gui                                                                11/03/25  16:06:05  PAGE 2   
+
+   59   3                  yerr-=distance; 
+   60   3                  uCol+=incy; 
+   61   3              } 
+   62   2          }  
+   63   1      } 
+   64          
+   65          void LCD_ShowChar(u16 x,u16 y,u16 fc, u16 bc, u8 num,u8 size,u8 mode)
+   66          {  
+   67   1          u8 temp;
+   68   1          u8 pos,t;
+   69   1          u16 colortemp=POINT_COLOR;      
+   70   1      
+   71   1          num=num-' ';//得到偏移后的值
+   72   1          LCD_SetWindows(x,y,x+size/2-1,y+size-1);//设置单个文字显示窗口
+   73   1          if(!mode) //非叠加方式
+   74   1          {
+   75   2              for(pos=0;pos<size;pos++)
+   76   2              {
+   77   3                  if(size==12)temp=asc2_1206[num].dat[pos];//调用1206字体
+   78   3                  else temp=asc2_1608[num].dat[pos];         //调用1608字体
+   79   3                  for(t=0;t<size/2;t++)
+   80   3                  {                 
+   81   4                      if(temp&0x01)LCD_WR_DATA_16Bit(fc); 
+   82   4                      else LCD_WR_DATA_16Bit(bc); 
+   83   4                      temp>>=1; 
+   84   4                      
+   85   4                  }
+   86   3              }    
+   87   2          }else//叠加方式
+   88   1          {
+   89   2              for(pos=0;pos<size;pos++)
+   90   2              {
+   91   3                  if(size==12)temp=asc2_1206[num].dat[pos];//调用1206字体
+   92   3                  else temp=asc2_1608[num].dat[pos];         //调用1608字体
+   93   3                  for(t=0;t<size/2;t++)
+   94   3                  {   
+   95   4                      POINT_COLOR=fc;              
+   96   4                      if(temp&0x01)LCD_DrawPoint(x+t,y+pos);//画一个点    
+   97   4                      temp>>=1; 
+   98   4                  }
+   99   3              }
+  100   2          }
+  101   1          POINT_COLOR=colortemp;    
+  102   1          LCD_SetWindows(0,0,lcddev.width-1,lcddev.height-1);//恢复窗口为全屏                      
+  103   1      }
+  104          
+  105          u32 mypow(u8 m,u8 n)
+  106          {
+  107   1          u32 result=1;     
+  108   1          while(n--)result*=m;    
+  109   1          return result;
+  110   1      }
+  111          
+  112          void LCD_ShowNum(u16 x,u16 y,u32 num,u8 len,u8 size)
+  113          {             
+  114   1          u8 t,temp;
+  115   1          u8 enshow=0;                           
+  116   1          for(t=0;t<len;t++)
+  117   1          {
+  118   2              temp=(num/mypow(10,(u8)(len-t-1)))%10;
+  119   2              if(enshow==0&&t<(len-1))
+  120   2              {
+  121   3                  if(temp==0)
+  122   3                  {
+  123   4                      LCD_ShowChar(x+(size/2)*t,y,POINT_COLOR,BACK_COLOR,' ',size,0);
+  124   4                      continue;
+C251 COMPILER V5.60.0,  gui                                                                11/03/25  16:06:05  PAGE 3   
+
+  125   4                  }else enshow=1; 
+  126   3                    
+  127   3              }
+  128   2               LCD_ShowChar(x+(size/2)*t,y,POINT_COLOR,BACK_COLOR,(u8)(temp+'0'),size,0); 
+  129   2          }
+  130   1      } 
+  131          
+  132          void LCD_ShowString(u16 x,u16 y,u8 size,u8 *p,u8 mode)
+  133          {         
+  134   1          while((*p<='~')&&(*p>=' '))//判断是不是非法字符!
+  135   1          {   
+  136   2              if(x>(lcddev.width-1)||y>(lcddev.height-1)) 
+  137   2              return;     
+  138   2              LCD_ShowChar(x,y,POINT_COLOR,BACK_COLOR,*p,size,mode);
+  139   2              x+=size/2;
+  140   2              p++;
+  141   2          }  
+  142   1      } 
+  143          
+  144          void GUI_DrawFont16(u16 x, u16 y, u16 fc, u16 bc, u8 *s,u8 mode)
+  145          {
+  146   1          u8 i,j;
+  147   1          u16 k;
+  148   1          u16 HZnum;
+  149   1          u16 x0=x;
+  150   1          HZnum=sizeof(tfont16)/sizeof(typFNT_GB16);    //自动统计汉字数目
+  151   1          
+  152   1          for (k=0;k<HZnum;k++) 
+  153   1          {
+  154   2              if ((tfont16[k].txt[0]==*(s))&&(tfont16[k].txt[1]==*(s+1)))
+  155   2              {
+  156   3                  LCD_SetWindows(x,y,x+16-1,y+16-1);
+  157   3                  for(i=0;i<16*2;i++)
+  158   3                  {
+  159   4                      for(j=0;j<8;j++)
+  160   4                      {    
+  161   5                          if(!mode) //非叠加方式
+  162   5                          {
+  163   6                              if(tfont16[k].dat[i]&(0x80>>j))    LCD_WR_DATA_16Bit(fc);
+  164   6                              else LCD_WR_DATA_16Bit(bc);
+  165   6                          }
+  166   5                          else
+  167   5                          {
+  168   6                              POINT_COLOR=fc;
+  169   6                              if(tfont16[k].dat[i]&(0x80>>j))    LCD_DrawPoint(x,y);//画一个点
+  170   6                              x++;
+  171   6                              if((x-x0)==16)
+  172   6                              {
+  173   7                                  x=x0;
+  174   7                                  y++;
+  175   7                                  break;
+  176   7                              }
+  177   6                          }
+  178   5                      }
+  179   4                  }
+  180   3              }                      
+  181   2              continue;  //查找到对应点阵字库立即退出，防止多个汉字重复取模带来影响
+  182   2          }
+  183   1          LCD_SetWindows(0,0,lcddev.width-1,lcddev.height-1);//恢复窗口为全屏  
+  184   1      } 
+  185          
+  186          void GUI_DrawFont24(u16 x, u16 y, u16 fc, u16 bc, u8 *s,u8 mode)
+  187          {
+  188   1          u8 i,j;
+  189   1          u16 k;
+  190   1          u16 HZnum;
+C251 COMPILER V5.60.0,  gui                                                                11/03/25  16:06:05  PAGE 4   
+
+  191   1          u16 x0=x;
+  192   1          HZnum=sizeof(tfont24)/sizeof(typFNT_GB24);    //自动统计汉字数目
+  193   1      
+  194   1          for (k=0;k<HZnum;k++) 
+  195   1          {
+  196   2              if ((tfont24[k].txt[0]==*(s))&&(tfont24[k].txt[1]==*(s+1)))
+  197   2              {
+  198   3                  LCD_SetWindows(x,y,x+24-1,y+24-1);
+  199   3                  for(i=0;i<24*3;i++)
+  200   3                  {
+  201   4                          for(j=0;j<8;j++)
+  202   4                          {
+  203   5                              if(!mode) //非叠加方式
+  204   5                              {
+  205   6                                  if(tfont24[k].dat[i]&(0x80>>j))    LCD_WR_DATA_16Bit(fc);
+  206   6                                  else LCD_WR_DATA_16Bit(bc);
+  207   6                              }
+  208   5                          else
+  209   5                          {
+  210   6                              POINT_COLOR=fc;
+  211   6                              if(tfont24[k].dat[i]&(0x80>>j))    LCD_DrawPoint(x,y);//画一个点
+  212   6                              x++;
+  213   6                              if((x-x0)==24)
+  214   6                              {
+  215   7                                  x=x0;
+  216   7                                  y++;
+  217   7                                  break;
+  218   7                              }
+  219   6                          }
+  220   5                      }
+  221   4                  }
+  222   3              }                      
+  223   2              continue;  //查找到对应点阵字库立即退出，防止多个汉字重复取模带来影响
+  224   2          }
+  225   1          LCD_SetWindows(0,0,lcddev.width-1,lcddev.height-1);//恢复窗口为全屏  
+  226   1      }
+  227          
+  228          
+  229          void GUI_DrawFont32(u16 x, u16 y, u16 fc, u16 bc, u8 *s,u8 mode)
+  230          {
+  231   1          u8 i,j;
+  232   1          u16 k;
+  233   1          u16 HZnum;
+  234   1          u16 x0=x;
+  235   1          HZnum=sizeof(tfont32)/sizeof(typFNT_GB32);    //自动统计汉字数目
+  236   1          for (k=0;k<HZnum;k++) 
+  237   1          {
+  238   2              if ((tfont32[k].txt[0]==*(s))&&(tfont32[k].txt[1]==*(s+1)))
+  239   2              {
+  240   3                  LCD_SetWindows(x,y,x+32-1,y+32-1);
+  241   3                  for(i=0;i<32*4;i++)
+  242   3                  {
+  243   4                      for(j=0;j<8;j++)
+  244   4                      {
+  245   5                          if(!mode) //非叠加方式
+  246   5                          {
+  247   6                              if(tfont32[k].dat[i]&(0x80>>j))    LCD_WR_DATA_16Bit(fc);
+  248   6                              else LCD_WR_DATA_16Bit(bc);
+  249   6                          }
+  250   5                          else
+  251   5                          {
+  252   6                              POINT_COLOR=fc;
+  253   6                              if(tfont32[k].dat[i]&(0x80>>j))    LCD_DrawPoint(x,y);//画一个点
+  254   6                              x++;
+  255   6                              if((x-x0)==32)
+  256   6                              {
+C251 COMPILER V5.60.0,  gui                                                                11/03/25  16:06:05  PAGE 5   
+
+  257   7                                  x=x0;
+  258   7                                  y++;
+  259   7                                  break;
+  260   7                              }
+  261   6                          }
+  262   5                      }
+  263   4                  }
+  264   3              }                      
+  265   2              continue;  //查找到对应点阵字库立即退出，防止多个汉字重复取模带来影响
+  266   2          }
+  267   1          LCD_SetWindows(0,0,lcddev.width-1,lcddev.height-1);//恢复窗口为全屏  
+  268   1      } 
+  269          
+  270          void Show_Str(u16 x, u16 y, u16 fc, u16 bc, u8 *str,u8 size,u8 mode)
+  271          {                    
+  272   1          u16 x0=x;                                    
+  273   1          u8 bHz=0;     //字符或者中文 
+  274   1          while(*str!=0)//数据未结束
+  275   1          { 
+  276   2              if(!bHz)
+  277   2              {
+  278   3                  if(x>(lcddev.width-size/2)||y>(lcddev.height-size)) 
+  279   3                  return; 
+  280   3                  if(*str>0x80)bHz=1;//中文 
+  281   3                  else              //字符
+  282   3                  {          
+  283   4                      if(*str==0x0D)//换行符号
+  284   4                      {         
+  285   5                          y+=size;
+  286   5                          x=x0;
+  287   5                          str++; 
+  288   5                      }  
+  289   4                      else
+  290   4                      {
+  291   5                          if(size>16)//字库中没有集成12X24 16X32的英文字体,用8X16代替
+  292   5                          {  
+  293   6                          LCD_ShowChar(x,y,fc,bc,*str,16,mode);
+  294   6                          x+=8; //字符,为全字的一半 
+  295   6                          }
+  296   5                          else
+  297   5                          {
+  298   6                          LCD_ShowChar(x,y,fc,bc,*str,size,mode);
+  299   6                          x+=size/2; //字符,为全字的一半 
+  300   6                          }
+  301   5                      } 
+  302   4                      str++; 
+  303   4                  }
+  304   3              }
+  305   2              else//中文 
+  306   2              {   
+  307   3                  if(x>(lcddev.width-size)||y>(lcddev.height-size)) 
+  308   3                  return;  
+  309   3                  bHz=0;//有汉字库    
+  310   3                  if(size==32)
+  311   3                  GUI_DrawFont32(x,y,fc,bc,str,mode);         
+  312   3                  else if(size==24)
+  313   3                  GUI_DrawFont24(x,y,fc,bc,str,mode);    
+  314   3                  else
+  315   3                  GUI_DrawFont16(x,y,fc,bc,str,mode);
+  316   3                      
+  317   3                  str+=2; 
+  318   3                  x+=size;//下一个汉字偏移        
+  319   3              }                         
+  320   2          }   
+  321   1      }
+  322          
+C251 COMPILER V5.60.0,  gui                                                                11/03/25  16:06:05  PAGE 6   
+
+  323          void _draw_circle_8(int xc, int yc, int x, int y, u16 c)
+  324          {
+  325   1          GUI_DrawPoint(xc + x, yc + y, c);
+  326   1      
+  327   1          GUI_DrawPoint(xc - x, yc + y, c);
+  328   1      
+  329   1          GUI_DrawPoint(xc + x, yc - y, c);
+  330   1      
+  331   1          GUI_DrawPoint(xc - x, yc - y, c);
+  332   1      
+  333   1          GUI_DrawPoint(xc + y, yc + x, c);
+  334   1      
+  335   1          GUI_DrawPoint(xc - y, yc + x, c);
+  336   1      
+  337   1          GUI_DrawPoint(xc + y, yc - x, c);
+  338   1      
+  339   1          GUI_DrawPoint(xc - y, yc - x, c);
+  340   1      }
+  341          
+  342          void gui_circle(int xc, int yc,u16 c,int r, int fill)
+  343          {
+  344   1          int x = 0, y = r, yi, d;
+  345   1      
+  346   1          d = 3 - 2 * r;
+  347   1      
+  348   1          if (fill) 
+  349   1          {
+  350   2              // 如果填充（画实心圆）
+  351   2              while (x <= y) {
+  352   3                  for (yi = x; yi <= y; yi++)
+  353   3                      _draw_circle_8(xc, yc, x, yi, c);
+  354   3      
+  355   3                  if (d < 0) {
+  356   4                      d = d + 4 * x + 6;
+  357   4                  } else {
+  358   4                      d = d + 4 * (x - y) + 10;
+  359   4                      y--;
+  360   4                  }
+  361   3                  x++;
+  362   3              }
+  363   2          } else 
+  364   1          {
+  365   2              // 如果不填充（画空心圆）
+  366   2              while (x <= y) {
+  367   3                  _draw_circle_8(xc, yc, x, y, c);
+  368   3                  if (d < 0) {
+  369   4                      d = d + 4 * x + 6;
+  370   4                  } else {
+  371   4                      d = d + 4 * (x - y) + 10;
+  372   4                      y--;
+  373   4                  }
+  374   3                  x++;
+  375   3              }
+  376   2          }
+  377   1      }
+  378          
+  379          
+  380          
+  381          void Gui_StrCenter(u16 x, u16 y, u16 fc, u16 bc, u8 *str,u8 size,u8 mode)
+  382          {
+  383   1          u16 len=strlen((const char *)str);
+  384   1          u16 x1=(lcddev.width-len*8)/2;
+  385   1          Show_Str(x+x1,y,fc,bc,str,size,mode);
+  386   1      } 
+  387           
+  388          
+C251 COMPILER V5.60.0,  gui                                                                11/03/25  16:06:05  PAGE 7   
+
+  389          
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =      8897     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =    ------     ------
+  xdata-const size     =    ------     ------
+  edata size           =    ------        137
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =    ------     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

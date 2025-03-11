@@ -1,0 +1,144 @@
+C251 COMPILER V5.60.0,  Ai                                                                 11/03/25  14:22:51  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE Ai
+OBJECT MODULE PLACED IN ..\obj\Ai.obj
+COMPILER INVOKED BY: C:\Keil_v5\C251\BIN\C251.EXE ..\USER\Ai.c XSMALL INTR2 BROWSE INCDIR(..\GUI;..\LCD;..\sys;..\touch;
+                    -..\USER;..\TinyMaix;TinyMaix;..\font;.;..\TinyMaix) DEBUG PRINT(.\Ai.lst) TABS(2) OBJECT(..\obj\Ai.obj) 
+
+stmt  level    source
+
+    1          #include "sys.h"
+    2          #include "tinymaix.h"
+    3          #include "Ai.h"
+    4          #include "canvas.h"
+    5          
+    6          #include "model.h"
+    7          
+    8          uint8_t xdata mdl_buf[MDL_BUF_LEN];
+    9          uint8_t xdata input_image[IMAGE_WIDTH * IMAGE_HEIGHT] = {0};
+   10          
+   11          
+   12          tm_mdl_t mdl;
+   13          tm_mat_t in_uint8;
+   14          tm_mat_t in;
+   15          tm_mat_t outs[1];
+   16          tm_err_t res;
+   17          
+   18          static tm_err_t layer_cb(tm_mdl_t *mdl, tml_head_t *lh)
+   19          {
+   20   1      #if TM_ENABLE_STAT
+                 // dump middle result
+                 int x, y, c;
+                 int h = lh->out_dims[1];
+                 int w = lh->out_dims[2];
+                 int ch = lh->out_dims[3];
+                 mtype_t *output = TML_GET_OUTPUT(mdl, lh);
+                 return TM_OK;
+                 TM_PRINTF("Layer %d callback ========\n", mdl->layer_i);
+               #if 1
+                 for (y = 0; y < h; y++)
+                 {
+                   TM_PRINTF("[");
+                   for (x = 0; x < w; x++)
+                   {
+                     TM_PRINTF("[");
+                     for (c = 0; c < ch; c++)
+                     {
+               #if TM_MDL_TYPE == TM_MDL_FP32
+                       TM_PRINTF("%.3f,", output[(y * w + x) * ch + c]);
+               #else
+                       TM_PRINTF("%.3f,", TML_DEQUANT(lh, output[(y * w + x) * ch + c]));
+               #endif
+                     }
+                     TM_PRINTF("],");
+                   }
+                   TM_PRINTF("],\n");
+                 }
+                 TM_PRINTF("\n");
+               #endif
+               #endif
+   51   1        return TM_OK;
+   52   1      }
+   53          
+   54          void clean_input_image()
+   55          {
+   56   1        memset(input_image, 0, IMAGE_WIDTH * IMAGE_HEIGHT * sizeof(input_image[0]));
+   57   1      }
+   58          
+C251 COMPILER V5.60.0,  Ai                                                                 11/03/25  14:22:51  PAGE 2   
+
+   59          // 处理模型输出的结果，返回识别出的数字
+   60          uint8_t parse_output(tm_mat_t *outs)
+   61          {
+   62   1        tm_mat_t out = outs[0];
+   63   1        float *dat = (float *)out.dat;
+   64   1        float maxp = 0;
+   65   1        int maxi = -1;
+   66   1        int i = 0;
+   67   1        for (; i < CLASS_N; i++)
+   68   1        {
+   69   2          if (dat[i] > maxp)
+   70   2          {
+   71   3            maxi = i;
+   72   3            maxp = dat[i];
+   73   3          }
+   74   2        }
+   75   1        // TM_PRINTF("### Predict output is: Number %d , Prob %.3f\r\n", maxi, maxp);
+   76   1        return maxi;
+   77   1      }
+   78          
+   79          void Ai_init()
+   80          {
+   81   1        in_uint8.dims = 3;
+   82   1        in_uint8.h = IMAGE_HEIGHT;
+   83   1        in_uint8.w = IMAGE_WIDTH;
+   84   1        in_uint8.c = IMAGE_CHANNEL;
+   85   1        in_uint8.dat = (mtype_t *)input_image;
+   86   1      
+   87   1        in.dims = 3;
+   88   1        in.h = IMAGE_HEIGHT;
+   89   1        in.w = IMAGE_WIDTH;
+   90   1        in.c = IMAGE_CHANNEL;
+   91   1        in.dat = NULL;
+   92   1      
+   93   1        res = tm_load(&mdl, mdl_data, mdl_buf, layer_cb, &in);
+   94   1        if (res != TM_OK)
+   95   1        {
+   96   2          TM_PRINTF("tm model load err %d\r\n", res);
+   97   2          return;
+   98   2        }
+   99   1      }
+  100          
+  101          uint8_t Ai_run()
+  102          {
+  103   1        tm_preprocess(&mdl, TMPP_UINT2INT, &in_uint8, &in);
+  104   1        tm_run(&mdl, &in, outs);
+  105   1        return parse_output(outs);
+  106   1      }
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =       288     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =      2352     ------
+  xdata-const size     =    ------     ------
+  edata size           =        62         12
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+C251 COMPILER V5.60.0,  Ai                                                                 11/03/25  14:22:51  PAGE 3   
+
+  hconst size          =      3276     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

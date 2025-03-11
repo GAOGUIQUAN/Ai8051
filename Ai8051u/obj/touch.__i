@@ -1,0 +1,1 @@
+"..\touch\touch.c" XSMALL INTR2 BROWSE INCDIR(..\GUI;..\LCD;..\sys;..\touch;..\USER;..\TinyMaix;TinyMaix;..\font;.;..\TinyMaix) DEBUG PRINT(.\touch.lst) TABS (2) OBJECT(..\obj\touch.obj)

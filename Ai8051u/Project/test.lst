@@ -1,0 +1,232 @@
+C251 COMPILER V5.60.0,  test                                                               11/03/25  16:05:43  PAGE 1   
+
+
+C251 COMPILER V5.60.0, COMPILATION OF MODULE test
+OBJECT MODULE PLACED IN ..\obj\test.obj
+COMPILER INVOKED BY: C:\Keil_v5\C251\BIN\C251.EXE ..\USER\test.c XSMALL INTR2 BROWSE INCDIR(..\GUI;..\LCD;..\sys;..\touc
+                    -h;..\USER;..\TinyMaix;TinyMaix;..\font;.;..\TinyMaix) DEBUG PRINT(.\test.lst) TABS(2) OBJECT(..\obj\test.obj) 
+
+stmt  level    source
+
+    1          #include <stdio.h>
+    2          #include "lcd.h"
+    3          #include "string.h"
+    4          #include "sys.h"
+    5          #include "gui.h"
+    6          #include "test.h"
+    7          #include "touch.h"
+    8          #include "stdint.h"
+    9          #include "Ai.h"
+   10          #include "expression.h"
+   11          #include "canvas.h"
+   12          
+   13          //========================variable==========================//
+   14          u16 ColorTab[5]={RED,GREEN,BLUE,YELLOW,BRED};//定义颜色数组
+   15          u16 ColornTab[8]={RED,MAGENTA,GREEN,DARKBLUE,BLUE,BLACK,LIGHTGREEN};
+   16          //=====================end of variable======================//
+   17          
+   18          
+   19          void DrawTestPage(u8 *str)
+   20          {
+   21   1          //绘制固定栏up
+   22   1          LCD_Clear(WHITE);
+   23   1          LCD_Fill(0,0,lcddev.width,20,BLUE);
+   24   1          //绘制固定栏down
+   25   1          LCD_Fill(0,lcddev.height-20,lcddev.width,lcddev.height,BLUE);
+   26   1          POINT_COLOR=WHITE;
+   27   1          Gui_StrCenter(0,2,WHITE,BLUE,str,16,1);//居中显示
+   28   1          Gui_StrCenter(0,lcddev.height-18,WHITE,BLUE,"AI calculator",16,1);//居中显示
+   29   1          //绘制测试区域
+   30   1          //LCD_Fill(0,20,lcddev.width,lcddev.height-20,WHITE);
+   31   1      }
+   32          
+   33          void paddingString(uint8_t *buffer, char c, uint8_t new_length)
+   34          {
+   35   1        uint8_t current_length;
+   36   1        uint8_t i;
+   37   1      
+   38   1        current_length = (uint8_t)strlen((char *)buffer); // 获取当前字符串长度
+   39   1      
+   40   1        // 如果当前长度已经大于或等于新长度，则无需填充
+   41   1        if (current_length >= new_length)
+   42   1        {
+   43   2          return;
+   44   2        }
+   45   1      
+   46   1        // 从当前字符串末尾开始填充，直到达到新长度
+   47   1        for (i = current_length; i < new_length; ++i)
+   48   1        {
+   49   2          buffer[i] = c;
+   50   2        }
+   51   1      
+   52   1        // 添加字符串终止符
+   53   1        buffer[new_length] = '\0';
+   54   1      }
+   55          
+   56          
+   57          uint8_t xdata expression[16] = {0};
+   58          uint8_t xdata expression_n = 0;
+C251 COMPILER V5.60.0,  test                                                               11/03/25  16:05:43  PAGE 2   
+
+   59          static uint8_t xdata strBuffer[50] = {0};
+   60          
+   61          void countResult(void){
+   62   1        {
+   63   2              uint32_t x, y;
+   64   2              uint8_t sum;
+   65   2              int in_char = 0;    // 标记当前是否在字符区域
+   66   2              int char_count = 0;   // 字符数量计数
+   67   2              uint32_t start_col = 0; // 字符起始列
+   68   2              expression_n = 0;
+   69   2      
+   70   2              for (x = 0; x < CANVAS_WIDTH; x++)
+   71   2              {
+   72   3                sum = 0;
+   73   3                for (y = 0; y < CANVAS_HEIGHT; y++)
+   74   3                {
+   75   4                  sum |= canvas[y * CANVAS_WIDTH + x];
+   76   4                }
+   77   3      
+   78   3                if (sum)
+   79   3                {
+   80   4                  // 当前列有非零值，表明在字符区域内
+   81   4                  if (!in_char)
+   82   4                  {
+   83   5                    in_char = 1;   // 标记进入字符区域
+   84   5                    start_col = x; // 记录字符起始列
+   85   5                    char_count++;  // 字符数量增加
+   86   5                  }
+   87   4                }
+   88   3                else
+   89   3                {
+   90   4                  // 当前列全为零，表明不在字符区域内
+   91   4                  if (in_char)
+   92   4                  {
+   93   5                    uint32_t end_col;
+   94   5                    in_char = 0; // 标记离开字符区域
+   95   5                    end_col = x - 1;
+   96   5      
+   97   5                    if (canvas_process_character(start_col, end_col))
+   98   5                    {
+   99   6                      expression[expression_n++] = Ai_run();
+  100   6                    }
+  101   5                  }
+  102   4                }
+  103   3              }
+  104   2      
+  105   2              // 处理最后一个字符到图片末尾的情况
+  106   2              if (in_char)
+  107   2              {
+  108   3                // 最后一个字符的结束列为图片末尾
+  109   3                uint32_t end_col = CANVAS_WIDTH - 1;
+  110   3      
+  111   3                if (canvas_process_character(start_col, end_col))
+  112   3                {
+  113   4                  expression[expression_n++] = Ai_run();
+  114   4                }
+  115   3                // printf("字符 %d ", char_count);
+  116   3                // printf("起始列: %d,", start_col);
+  117   3                // printf("结束列: %d\n", end_col);
+  118   3              }
+  119   2      
+  120   2              sprintf(strBuffer, "result: %.2f", expression_calc(expression, expression_n));
+  121   2              // 用在字符后面拼接空格的方法，清理残留字符，避免全屏刷新造成的闪烁。
+  122   2              paddingString(strBuffer, ' ', 20);
+  123   2              LCD_ShowString(10,150,16,strBuffer,1);
+  124   2              
+C251 COMPILER V5.60.0,  test                                                               11/03/25  16:05:43  PAGE 3   
+
+  125   2              expression_to_string(expression, expression_n, strBuffer);
+  126   2              paddingString(strBuffer, ' ', 20);
+  127   2              
+  128   2              LCD_ShowString(10,120,16,strBuffer,1);
+  129   2              
+  130   2              clean_canvas();
+  131   2            }
+  132   1      }
+  133          
+  134          
+  135          void aiTest(void){
+  136   1          u8 i=0;
+  137   1        u16 j=0;
+  138   1        u16 colorTemp=0;    
+  139   1        DrawTestPage("AI8051:");
+  140   1        
+  141   1        LCD_ShowString(lcddev.width-24,0,16,"RST",1);//显示清屏区域
+  142   1        
+  143   1        LCD_Fill(lcddev.width-52,2,lcddev.width-50+20,18,BLACK); 
+  144   1        POINT_COLOR=BLACK;
+  145   1        
+  146   1        
+  147   1        LCD_Fill(0, 18+96 + 1, 319, 18+96 + 3, BLACK); // 再屏幕中间画一条线
+  148   1      
+  149   1        
+  150   1        
+  151   1        
+  152   1        while(1)
+  153   1        {    
+  154   2          if(Convert_Pos())     //触摸屏被按下
+  155   2          { 
+  156   3            if(tp_pixlcd.x<lcddev.width&&tp_pixlcd.y<lcddev.height)
+  157   3            { 
+  158   4              if(tp_pixlcd.x>(lcddev.width-24)&&tp_pixlcd.y<16)
+  159   4              {
+  160   5                DrawTestPage("AI8051:");//清除
+  161   5                LCD_ShowString(lcddev.width-24,0,16,"RST",1);//显示清屏区域
+  162   5                POINT_COLOR=colorTemp;
+  163   5                LCD_Fill(lcddev.width-52,2,lcddev.width-50+20,18,POINT_COLOR); 
+  164   5                LCD_Fill(0, 96 + 1, 319, 96 + 3, BLACK); // 再屏幕中间画一条线
+  165   5                POINT_COLOR=BLACK;
+  166   5                POINT_COLOR=colorTemp;
+  167   5                clean_canvas();
+  168   5              }
+  169   4              else if((tp_pixlcd.x>(lcddev.width-60)&&tp_pixlcd.x<(lcddev.width-50+20))&&tp_pixlcd.y<20)
+  170   4              {
+  171   5                LCD_Fill(lcddev.width-52,2,lcddev.width-50+20,18,ColorTab[j%5]); 
+  172   5                  POINT_COLOR=ColorTab[(j++)%5];
+  173   5                  colorTemp=POINT_COLOR;
+  174   5                  delay_ms(10);
+  175   5                
+  176   5              }else if(tp_pixlcd.x>0&&tp_pixlcd.x<lcddev.width&&tp_pixlcd.y>20&&tp_pixlcd.y<lcddev.height){
+  177   5                if(tp_pixlcd.y<18+96){
+  178   6                  TP_Draw_Big_Point(tp_pixlcd.x,tp_pixlcd.y,POINT_COLOR); 
+  179   6                  
+  180   6                  canvas[(tp_pixlcd.x / 4) + ((tp_pixlcd.y-18) / 4) * CANVAS_WIDTH] = 255;
+  181   6                  
+  182   6                }else if(tp_pixlcd.y>18+96){
+  183   6                  countResult();
+  184   6                  
+  185   6                }
+  186   5              }
+  187   4               
+  188   4                           
+  189   4            }
+  190   3          }else delay_ms(5);  //没有按键按下的时候              
+C251 COMPILER V5.60.0,  test                                                               11/03/25  16:05:43  PAGE 4   
+
+  191   2        }   
+  192   1      }
+
+
+Module Information          Static   Overlayable
+------------------------------------------------
+  code size            =      1106     ------
+  ecode size           =    ------     ------
+  data size            =    ------     ------
+  idata size           =    ------     ------
+  pdata size           =    ------     ------
+  xdata size           =        67     ------
+  xdata-const size     =    ------     ------
+  edata size           =        26         19
+  bit size             =    ------     ------
+  ebit size            =    ------     ------
+  bitaddressable size  =    ------     ------
+  ebitaddressable size =    ------     ------
+  far data size        =    ------     ------
+  huge data size       =    ------     ------
+  const size           =    ------     ------
+  hconst size          =       155     ------
+End of Module Information.
+
+
+C251 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
